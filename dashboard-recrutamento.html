@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard de Recrutamento</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    header {
+      background: #fff;
+      padding: 18px 36px;
+      border-bottom: 3px solid #2563eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 4px #0001;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 1.35rem; font-weight: 700; color: #1e293b; }
+    header .subtitle { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
+
+    .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    .badge {
+      background: #2563eb;
+      color: #fff;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .btn-carregar {
+      background: #fff;
+      color: #2563eb;
+      border: 2px solid #2563eb;
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-carregar:hover { background: #2563eb; color: #fff; }
+
+    /* MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #00000066;
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: #fff;
+      border-radius: 14px;
+      padding: 28px;
+      width: 100%;
+      max-width: 620px;
+      box-shadow: 0 8px 40px #0003;
+    }
+    .modal h2 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; color: #1e293b; }
+    .modal p  { font-size: 0.8rem; color: #64748b; margin-bottom: 14px; line-height: 1.6; }
+
+    .modal-steps {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.78rem;
+      color: #475569;
+      margin-bottom: 14px;
+      line-height: 1.8;
+    }
+
+    textarea {
+      width: 100%;
+      height: 160px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.78rem;
+      font-family: monospace;
+      color: #1e293b;
+      resize: vertical;
+    }
+    textarea:focus { outline: none; border-color: #2563eb; }
+
+    .modal-actions { display: flex; gap: 10px; margin-top: 14px; justify-content: flex-end; }
+
+    .btn-primary {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-primary:hover { background: #1d4ed8; }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #64748b;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      cursor: pointer;
+    }
+
+    .data-source-bar {
+      background: #eff6ff;
+      border-bottom: 1px solid #bfdbfe;
+      padding: 7px 36px;
+      font-size: 0.73rem;
+      color: #2563eb;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .data-source-bar.placeholder { background: #fefce8; border-color: #fde68a; color: #92400e; }
+
+    /* CONTAINER */
+    .container { padding: 24px 36px; max-width: 1600px; margin: 0 auto; }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .kpi-card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 16px 18px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px #0001;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 100%; height: 3px;
+    }
+    .kpi-card.blue::after   { background: #2563eb; }
+    .kpi-card.green::after  { background: #16a34a; }
+    .kpi-card.yellow::after { background: #d97706; }
+    .kpi-card.purple::after { background: #7c3aed; }
+    .kpi-card.red::after    { background: #dc2626; }
+    .kpi-card.teal::after   { background: #0d9488; }
+
+    .kpi-label {
+      font-size: 0.67rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+    .kpi-value { font-size: 1.8rem; font-weight: 800; color: #1e293b; line-height: 1; }
+    .kpi-value span { font-size: 0.95rem; font-weight: 500; color: #64748b; }
+    .kpi-sub { font-size: 0.7rem; color: #94a3b8; margin-top: 4px; }
+    .kpi-trend { font-size: 0.7rem; margin-top: 3px; font-weight: 700; }
+    .trend-good { color: #16a34a; }
+    .trend-bad  { color: #dc2626; }
+    .trend-neutral { color: #94a3b8; }
+
+    /* Charts */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .chart-card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px #0001;
+    }
+    .chart-card.full { grid-column: 1 / -1; }
+    .chart-card.placeholder-card {
+      opacity: 0.6;
+      position: relative;
+    }
+    .placeholder-badge {
+      position: absolute;
+      top: 14px; right: 14px;
+      background: #fef3c7;
+      color: #92400e;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .chart-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-blue   { background: #2563eb; }
+    .dot-green  { background: #16a34a; }
+    .dot-yellow { background: #d97706; }
+    .dot-purple { background: #7c3aed; }
+    .dot-red    { background: #dc2626; }
+    .dot-teal   { background: #0d9488; }
+
+    canvas { max-height: 240px; }
+
+    /* Tabela */
+    .table-wrapper { overflow-x: auto; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.81rem; }
+    thead th {
+      text-align: left; padding: 8px 12px;
+      color: #64748b; font-size: 0.66rem;
+      text-transform: uppercase; letter-spacing: 0.9px;
+      border-bottom: 2px solid #e2e8f0; white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.1s; }
+    tbody tr:hover { background: #f8fafc; }
+    tbody td { padding: 9px 12px; color: #334155; }
+
+    .pill {
+      display: inline-block; padding: 2px 9px;
+      border-radius: 20px; font-size: 0.67rem; font-weight: 700;
+    }
+    .pill-red    { background: #fee2e2; color: #dc2626; }
+    .pill-yellow { background: #fef3c7; color: #d97706; }
+    .pill-green  { background: #dcfce7; color: #16a34a; }
+    .pill-blue   { background: #dbeafe; color: #2563eb; }
+    .pill-purple { background: #ede9fe; color: #7c3aed; }
+
+    .dias-badge { font-weight: 700; font-size: 0.85rem; }
+    .dias-critico { color: #dc2626; }
+    .dias-atencao { color: #d97706; }
+    .dias-ok      { color: #16a34a; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #94a3b8;
+      font-size: 0.85rem;
+    }
+    .empty-state strong { display: block; font-size: 1rem; margin-bottom: 6px; color: #cbd5e1; }
+
+    .legend-bar {
+      font-size: 0.68rem;
+      color: #64748b;
+      margin-bottom: 12px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .legend-bar span { display: flex; align-items: center; gap: 4px; }
+
+    footer {
+      text-align: center; padding: 18px;
+      color: #cbd5e1; font-size: 0.7rem;
+      border-top: 1px solid #e2e8f0;
+      margin-top: 8px; background: #fff;
+    }
+  </style>
+</head>
+<body>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>Carregar dados da planilha</h2>
+    <p>Cole aqui os dados copiados diretamente do seu Excel. Inclua o cabeçalho na primeira linha.</p>
+    <div class="modal-steps">
+      <strong>Como fazer:</strong><br>
+      1. Abra sua planilha no Excel<br>
+      2. Selecione todas as linhas (incluindo o cabeçalho)<br>
+      3. Copie (Ctrl+C)<br>
+      4. Cole aqui (Ctrl+V) e clique em <strong>Carregar</strong>
+    </div>
+    <div style="font-size:0.73rem;color:#94a3b8;margin-bottom:6px;">
+      Colunas esperadas: <code>Responsável · Vaga · Área · Numero de vagas · Prioridade · Motivo de abertura · Data de abertura</code>
+    </div>
+    <textarea id="pasteArea" placeholder="Cole seus dados aqui..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="fecharModal()">Cancelar</button>
+      <button class="btn-primary" onclick="carregarDados()">Carregar dados</button>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div>
+    <h1>Dashboard de Recrutamento</h1>
+    <div class="subtitle">Gestão à Vista — Talent Acquisition · Meta SLA: 30 dias</div>
+  </div>
+  <div class="header-right">
+    <button class="btn-carregar" onclick="abrirModal()">+ Carregar planilha</button>
+    <div class="badge" id="badgeData">Mai / 2026</div>
+  </div>
+</header>
+
+<div class="data-source-bar placeholder" id="sourceBar">
+  ⚠️ Exibindo dados de exemplo — clique em "Carregar planilha" para usar seus dados reais
+</div>
+
+<div class="container">
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card blue">
+      <div class="kpi-label">Vagas Abertas</div>
+      <div class="kpi-value" id="kpiVagasAbertas">34</div>
+      <div class="kpi-sub" id="kpiVagasAbertasSub">requisições em andamento</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Posições Abertas</div>
+      <div class="kpi-value" id="kpiPosicoes">52</div>
+      <div class="kpi-sub">headcount total em aberto</div>
+    </div>
+    <div class="kpi-card yellow">
+      <div class="kpi-label">SLA Médio</div>
+      <div class="kpi-value" id="kpiSLA">32<span> dias</span></div>
+      <div class="kpi-sub">Meta: 30 dias</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Vagas Críticas</div>
+      <div class="kpi-value" id="kpiCriticas">7</div>
+      <div class="kpi-sub" id="kpiCriticasSub">acima de 45 dias</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">Alta Prioridade</div>
+      <div class="kpi-value" id="kpiAlta">12</div>
+      <div class="kpi-sub">vagas urgentes</div>
+    </div>
+    <div class="kpi-card teal">
+      <div class="kpi-label">Substituição</div>
+      <div class="kpi-value" id="kpiSubst">58<span>%</span></div>
+      <div class="kpi-sub">do total de aberturas</div>
+    </div>
+  </div>
+
+  <!-- Motivo abertura + Vagas por área -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title"><span class="dot dot-blue"></span>Motivo de Abertura</div>
+      <canvas id="motivoChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title"><span class="dot dot-purple"></span>Vagas por Área</div>
+      <canvas id="areaChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Prioridade + SLA por área (placeholder) -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title"><span class="dot dot-red"></span>Distribuição por Prioridade</div>
+      <canvas id="prioridadeChart"></canvas>
+    </div>
+    <div class="chart-card placeholder-card">
+      <div class="placeholder-badge">Aguarda inhire</div>
+      <div class="chart-title"><span class="dot dot-yellow"></span>Funil de Candidatos</div>
+      <canvas id="funnelChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Tabela vagas -->
+  <div class="chart-card full" style="margin-bottom:20px">
+    <div class="chart-title"><span class="dot dot-yellow"></span>Vagas Abertas — Detalhe</div>
+    <div class="legend-bar">
+      <span><span style="color:#dc2626;font-weight:700">●</span> Crítico: acima de 45 dias</span>
+      <span><span style="color:#d97706;font-weight:700">●</span> Atenção: 31–45 dias</span>
+      <span><span style="color:#16a34a;font-weight:700">●</span> OK: até 30 dias</span>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Vaga</th>
+            <th>Área</th>
+            <th>Responsável</th>
+            <th>Posições</th>
+            <th>Prioridade</th>
+            <th>Motivo</th>
+            <th>Dias em Aberto</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="vagasTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Dashboard de Recrutamento · <span id="footerData">Dados de exemplo</span> · Meta SLA: 30 dias
+</footer>
+
+<script>
+  Chart.defaults.color = '#64748b';
+  Chart.defaults.font.family = "'Segoe UI', sans-serif";
+
+  // ── Dados de exemplo ────────────────────────────────────────────────────────
+  const EXEMPLO = [
+    { vaga:'Desenvolvedor Full Stack Sênior', area:'Tech',       resp:'Ana Lima',      posicoes:1, prioridade:'Alta',  motivo:'Headcount',    dataAbertura:'2026-03-28' },
+    { vaga:'Analista Comercial',              area:'Vendas',     resp:'Carlos Souza',  posicoes:3, prioridade:'Alta',  motivo:'Substituição', dataAbertura:'2026-04-11' },
+    { vaga:'Coordenador de Operações',        area:'Operações',  resp:'Priya Nair',    posicoes:1, prioridade:'Média', motivo:'Substituição', dataAbertura:'2026-04-08' },
+    { vaga:'Analista Financeiro Jr.',         area:'Financeiro', resp:'Marcos Reis',   posicoes:2, prioridade:'Baixa', motivo:'Headcount',    dataAbertura:'2026-05-05' },
+    { vaga:'Analista de Supply Chain',        area:'Supply',     resp:'Juliana Costa', posicoes:2, prioridade:'Média', motivo:'Substituição', dataAbertura:'2026-04-27' },
+    { vaga:'Tech Lead Backend',               area:'Tech',       resp:'Ana Lima',      posicoes:1, prioridade:'Alta',  motivo:'Headcount',    dataAbertura:'2026-03-19' },
+    { vaga:'People Business Partner',         area:'People',     resp:'Fernanda Melo', posicoes:1, prioridade:'Baixa', motivo:'Substituição', dataAbertura:'2026-05-09' },
+    { vaga:'Supervisor de Operações',         area:'Operações',  resp:'Carlos Souza',  posicoes:2, prioridade:'Média', motivo:'Substituição', dataAbertura:'2026-04-14' },
+    { vaga:'Representante de Vendas',         area:'Vendas',     resp:'Marcos Reis',   posicoes:5, prioridade:'Alta',  motivo:'Headcount',    dataAbertura:'2026-05-12' },
+    { vaga:'Supply Planner',                  area:'Supply',     resp:'Juliana Costa', posicoes:1, prioridade:'Média', motivo:'Substituição', dataAbertura:'2026-04-21' },
+    { vaga:'Analista de People Analytics',   area:'People',     resp:'Fernanda Melo', posicoes:1, prioridade:'Baixa', motivo:'Headcount',    dataAbertura:'2026-05-01' },
+    { vaga:'Gerente de Contas',               area:'Vendas',     resp:'Carlos Souza',  posicoes:2, prioridade:'Alta',  motivo:'Substituição', dataAbertura:'2026-03-10' },
+  ];
+
+  let dadosAtivos = EXEMPLO.map(d => ({ ...d, dias: calcDias(d.dataAbertura) }));
+  let charts = {};
+
+  function calcDias(dataStr) {
+    if (!dataStr) return 0;
+    // aceita dd/mm/aaaa ou aaaa-mm-dd
+    let d;
+    if (dataStr.includes('/')) {
+      const [dd, mm, aaaa] = dataStr.split('/');
+      d = new Date(`${aaaa}-${mm}-${dd}`);
+    } else {
+      d = new Date(dataStr);
+    }
+    if (isNaN(d)) return 0;
+    return Math.floor((new Date() - d) / 86400000);
+  }
+
+  function destruirCharts() {
+    Object.values(charts).forEach(c => c && c.destroy());
+    charts = {};
+  }
+
+  function renderDashboard(dados) {
+    destruirCharts();
+
+    // ── KPIs ──────────────────────────────────────────────────────────────────
+    const totalRequisicoes = dados.length;
+    const totalPosicoes    = dados.reduce((s, d) => s + (d.posicoes || 1), 0);
+    const mediasDias       = Math.round(dados.reduce((s, d) => s + d.dias, 0) / dados.length);
+    const criticas         = dados.filter(d => d.dias > 45).length;
+    const altaPrioridade   = dados.filter(d => (d.prioridade || '').toLowerCase() === 'alta').length;
+    const subst            = dados.filter(d => (d.motivo || '').toLowerCase().includes('substit')).length;
+    const substPct         = Math.round((subst / dados.length) * 100);
+
+    document.getElementById('kpiVagasAbertas').textContent    = totalRequisicoes;
+    document.getElementById('kpiVagasAbertasSub').textContent = 'requisições em andamento';
+    document.getElementById('kpiPosicoes').textContent        = totalPosicoes;
+    document.getElementById('kpiSLA').innerHTML               = `${mediasDias}<span> dias</span>`;
+    document.getElementById('kpiCriticas').textContent        = criticas;
+    document.getElementById('kpiAlta').textContent            = altaPrioridade;
+    document.getElementById('kpiSubst').innerHTML             = `${substPct}<span>%</span>`;
+
+    // ── Gráfico: Motivo de abertura ───────────────────────────────────────────
+    const motivosMap = {};
+    dados.forEach(d => {
+      const m = d.motivo || 'Outros';
+      motivosMap[m] = (motivosMap[m] || 0) + 1;
+    });
+    const motivoLabels = Object.keys(motivosMap);
+    const motivoVals   = Object.values(motivosMap);
+    const CORES_MOTIVO = ['#2563eb','#16a34a','#d97706','#7c3aed','#dc2626','#0d9488'];
+
+    charts.motivo = new Chart(document.getElementById('motivoChart'), {
+      type: 'doughnut',
+      data: {
+        labels: motivoLabels,
+        datasets: [{ data: motivoVals, backgroundColor: CORES_MOTIVO, borderColor: '#fff', borderWidth: 3 }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#475569', padding: 12, font: { size: 11 } } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.raw} vagas` } }
+        }
+      }
+    });
+
+    // ── Gráfico: Vagas por área ───────────────────────────────────────────────
+    const areasMap = {};
+    dados.forEach(d => { const a = d.area || 'Outros'; areasMap[a] = (areasMap[a] || 0) + (d.posicoes || 1); });
+    const areaLabels = Object.keys(areasMap).sort((a, b) => areasMap[b] - areasMap[a]);
+    const areaVals   = areaLabels.map(a => areasMap[a]);
+
+    charts.area = new Chart(document.getElementById('areaChart'), {
+      type: 'bar',
+      data: {
+        labels: areaLabels,
+        datasets: [{
+          label: 'Posições',
+          data: areaVals,
+          backgroundColor: '#dbeafe',
+          borderColor: '#2563eb',
+          borderWidth: 1.5,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw} posições` } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#64748b' } },
+          y: { grid: { color: '#f1f5f9' }, ticks: { color: '#94a3b8' } }
+        }
+      }
+    });
+
+    // ── Gráfico: Prioridade ───────────────────────────────────────────────────
+    const prioMap = { 'Alta': 0, 'Média': 0, 'Baixa': 0 };
+    dados.forEach(d => {
+      const p = (d.prioridade || '').trim();
+      if (p in prioMap) prioMap[p]++;
+      else prioMap['Outros'] = (prioMap['Outros'] || 0) + 1;
+    });
+    const prioLabels = Object.keys(prioMap).filter(k => prioMap[k] > 0);
+    const prioVals   = prioLabels.map(k => prioMap[k]);
+    const CORES_PRIO = { Alta: '#dc2626', Média: '#d97706', Baixa: '#16a34a', Outros: '#94a3b8' };
+
+    charts.prioridade = new Chart(document.getElementById('prioridadeChart'), {
+      type: 'doughnut',
+      data: {
+        labels: prioLabels,
+        datasets: [{ data: prioVals, backgroundColor: prioLabels.map(l => CORES_PRIO[l] || '#94a3b8'), borderColor: '#fff', borderWidth: 3 }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#475569', padding: 12, font: { size: 11 } } },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.raw} vagas` } }
+        }
+      }
+    });
+
+    // ── Gráfico: Funil placeholder ────────────────────────────────────────────
+    charts.funil = new Chart(document.getElementById('funnelChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Inscritos', 'Triagem', 'Entrevista RH', 'Ent. Gestor', 'Proposta', 'Admitido'],
+        datasets: [{ label: 'Candidatos', data: [850, 420, 180, 72, 30, 18], backgroundColor: ['#dbeafe','#93c5fd','#60a5fa','#3b82f6','#2563eb','#1d4ed8'], borderRadius: 6 }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw} candidatos` } } },
+        scales: {
+          x: { grid: { color: '#f1f5f9' }, ticks: { color: '#94a3b8' } },
+          y: { grid: { display: false }, ticks: { color: '#475569', font: { weight: '600' } } }
+        }
+      }
+    });
+
+    // ── Tabela ────────────────────────────────────────────────────────────────
+    const tbody = document.getElementById('vagasTable');
+    tbody.innerHTML = '';
+
+    if (!dados.length) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><strong>Nenhuma vaga encontrada</strong>Verifique se os dados foram colados corretamente.</div></td></tr>`;
+      return;
+    }
+
+    dados.sort((a, b) => b.dias - a.dias).forEach(v => {
+      const diasClass = v.dias > 45 ? 'dias-critico' : v.dias > 30 ? 'dias-atencao' : 'dias-ok';
+      const pillClass = v.dias > 45 ? 'pill-red'     : v.dias > 30 ? 'pill-yellow'  : 'pill-green';
+      const pillText  = v.dias > 45 ? 'Crítico'      : v.dias > 30 ? 'Atenção'      : 'OK';
+      const priClass  = (v.prioridade || '').toLowerCase() === 'alta' ? 'pill-red'
+                      : (v.prioridade || '').toLowerCase() === 'média' ? 'pill-yellow'
+                      : 'pill-green';
+
+      tbody.innerHTML += `
+        <tr>
+          <td style="font-weight:600;color:#1e293b">${v.vaga || '—'}</td>
+          <td>${v.area || '—'}</td>
+          <td>${v.resp || '—'}</td>
+          <td style="text-align:center">${v.posicoes || 1}</td>
+          <td><span class="pill ${priClass}">${v.prioridade || '—'}</span></td>
+          <td>${v.motivo || '—'}</td>
+          <td style="text-align:center"><span class="dias-badge ${diasClass}">${v.dias}d</span></td>
+          <td><span class="pill ${pillClass}">${pillText}</span></td>
+        </tr>`;
+    });
+  }
+
+  // ── Modal ────────────────────────────────────────────────────────────────────
+  function abrirModal() { document.getElementById('modalOverlay').classList.add('open'); }
+  function fecharModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+    document.getElementById('pasteArea').value = '';
+  }
+
+  document.getElementById('modalOverlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) fecharModal();
+  });
+
+  function carregarDados() {
+    const raw = document.getElementById('pasteArea').value.trim();
+    if (!raw) return alert('Cole os dados antes de carregar.');
+
+    const linhas = raw.split('\n').map(l => l.split('\t').map(c => c.trim()));
+    if (linhas.length < 2) return alert('É necessário pelo menos o cabeçalho e uma linha de dados.');
+
+    // Mapear cabeçalhos de forma flexível
+    const header = linhas[0].map(h => h.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' '));
+    const idx = (termos) => {
+      for (const t of termos) {
+        const i = header.findIndex(h => h.includes(t));
+        if (i !== -1) return i;
+      }
+      return -1;
+    };
+
+    const iResp   = idx(['responsavel','responsavel']);
+    const iVaga   = idx(['vaga','cargo','posicao']);
+    const iArea   = idx(['area','departamento','setor']);
+    const iPos    = idx(['numero','posicoes','headcount','qtd','quantidade']);
+    const iPrio   = idx(['prioridade','urgencia','urgência']);
+    const iMotivo = idx(['motivo','abertura','tipo']);
+    const iData   = idx(['data']);
+
+    const dados = linhas.slice(1).filter(l => l.some(c => c)).map(l => ({
+      resp:       iResp   >= 0 ? l[iResp]   : '—',
+      vaga:       iVaga   >= 0 ? l[iVaga]   : '—',
+      area:       iArea   >= 0 ? l[iArea]   : '—',
+      posicoes:   iPos    >= 0 ? parseInt(l[iPos]) || 1 : 1,
+      prioridade: iPrio   >= 0 ? l[iPrio]   : '—',
+      motivo:     iMotivo >= 0 ? l[iMotivo] : '—',
+      dataAbertura: iData >= 0 ? l[iData]   : '',
+      dias:       iData   >= 0 ? calcDias(l[iData]) : 0,
+    }));
+
+    dadosAtivos = dados;
+
+    // Atualizar UI
+    const agora = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    document.getElementById('badgeData').textContent = agora;
+    document.getElementById('footerData').textContent = `Dados reais carregados em ${new Date().toLocaleDateString('pt-BR')}`;
+
+    const bar = document.getElementById('sourceBar');
+    bar.textContent = `✅ Dados reais carregados — ${dados.length} vagas da sua planilha`;
+    bar.className = 'data-source-bar';
+
+    renderDashboard(dados);
+    fecharModal();
+  }
+
+  // ── Inicialização ────────────────────────────────────────────────────────────
+  dadosAtivos = EXEMPLO.map(d => ({ ...d, dias: calcDias(d.dataAbertura) }));
+  renderDashboard(dadosAtivos);
+</script>
+</body>
+</html>
